@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  SALES_EXECUTIVE
+}
+
+enum SeasonType {
+  PEAK
+  MODERATE
+  OFF
+}
+
+enum QuotationStatus {
+  DRAFT
+  FINALIZED
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          Role
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  quotations    Quotation[]
+}
+
+model State {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+
+  locations Location[]
+  packages  TourPackage[]
+  quotations Quotation[]
+}
+
+model Location {
+  id        Int      @id @default(autoincrement())
+  stateId   Int
+  name      String
+  createdAt DateTime @default(now())
+
+  state     State    @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  hotels    Hotel[]
+
+  tourPackageLocations TourPackageLocation[]  
+}
+model TourPackage {
+  id        Int      @id @default(autoincrement())
+  stateId   Int
+  name      String
+  createdAt DateTime @default(now())
+
+  state     State    @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  locations TourPackageLocation[]
+}
+
+model TourPackageLocation {
+  id            Int      @id @default(autoincrement())
+  tourPackageId Int
+  locationId    Int
+  numberOfNights Int
+  sequenceOrder Int
+
+  tourPackage   TourPackage @relation(fields: [tourPackageId], references: [id], onDelete: Cascade)
+  location      Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+}
+
+model HotelCategory {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+
+  hotels Hotel[]
+}
+
+model MealPlan {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+
+  pricing HotelPricing[]
+}
+
+model Hotel {
+  id         Int      @id @default(autoincrement())
+  locationId Int
+  categoryId Int
+  name       String
+  createdAt  DateTime @default(now())
+
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  category   HotelCategory @relation(fields: [categoryId], references: [id])
+
+  pricing    HotelPricing[]
+}
+
+model Season {
+  id        Int        @id @default(autoincrement())
+  name      SeasonType @unique
+  startDate DateTime
+  endDate   DateTime
+
+  pricing   HotelPricing[]
+}
+
+model HotelPricing {
+  id          Int      @id @default(autoincrement())
+  hotelId     Int
+  seasonId    Int
+  mealPlanId  Int
+  pricePerNight Decimal @db.Decimal(10,2)
+
+  hotel     Hotel  @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  season    Season @relation(fields: [seasonId], references: [id])
+  mealPlan  MealPlan @relation(fields: [mealPlanId], references: [id])
+
+  @@unique([hotelId, seasonId, mealPlanId])
+}
+
+model Quotation {
+  id                    Int      @id @default(autoincrement())
+  quotationNumber       String?
+  createdBy             Int
+  stateId               Int
+  tourPackageId         Int
+  travelStartDate       DateTime
+  travelEndDate         DateTime
+  totalHotelCost        Decimal  @default(0) @db.Decimal(12,2)
+  totalVehicleCost      Decimal  @default(0) @db.Decimal(12,2)
+  totalActivityCost     Decimal  @default(0) @db.Decimal(12,2)
+  baseCost              Decimal  @default(0) @db.Decimal(12,2)
+  profitAmount          Decimal  @default(0) @db.Decimal(12,2)
+  gstAmount             Decimal  @default(0) @db.Decimal(12,2)
+  manualOverrideAmount  Decimal? @db.Decimal(12,2)
+  finalAmount           Decimal  @default(0) @db.Decimal(12,2)
+  status                QuotationStatus @default(DRAFT)
+  createdAt             DateTime @default(now())
+
+  user     User  @relation(fields: [createdBy], references: [id])
+  state    State @relation(fields: [stateId], references: [id])
+}
