@@ -7,7 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class QuotationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async calculate(data: any) {
     const tourPackage = await this.prisma.tourPackage.findUnique({
@@ -22,8 +22,10 @@ export class QuotationsService {
 
     let hotelTotal = 0;
 
+    console.log('Package Locations:', tourPackage.locations);
+
     for (const selection of data.hotels) {
-        console.log("ss->",selection)
+      console.log("ss->", selection)
       const packageLocation =
         tourPackage.locations.find(
           (l) =>
@@ -74,5 +76,34 @@ export class QuotationsService {
       activityCost,
       finalTotal,
     };
+  }
+
+  async findOne(id: number) {
+    return this.prisma.quotation.findUnique({
+      where: { id },
+      include: {
+        hotels: true,
+      },
+    });
+  }
+
+  async overrideTotal(
+    quotationId: number,
+    newTotal: number,
+  ) {
+    const quotation = await this.prisma.quotation.findUnique({
+      where: { id: quotationId },
+    });
+
+    if (!quotation) {
+      throw new NotFoundException('Quotation not found');
+    }
+
+    return this.prisma.quotation.update({
+      where: { id: quotationId },
+      data: {
+        overrideTotal: newTotal,
+      },
+    });
   }
 }
