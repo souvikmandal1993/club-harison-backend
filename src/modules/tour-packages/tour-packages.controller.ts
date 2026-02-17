@@ -6,6 +6,7 @@ import {
   Param,
   Body,
   UseGuards,
+  ParseIntPipe
 } from '@nestjs/common';
 import { TourPackagesService } from './tour-packages.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -29,6 +30,11 @@ export class TourPackagesController {
   findAll() {
     return this.service.findAll();
   }
+
+  @Get(':id')
+    findOne(@Param('id', ParseIntPipe) id: number) {
+        return this.service.findOne(id);
+    }
 
   @Get('state/:stateId')
   @Roles('SUPER_ADMIN', 'SALES_EXECUTIVE')

@@ -9,23 +9,23 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class QuotationsService {
   constructor(private prisma: PrismaService) { }
 
+  // -----------------------------------------
+  // CALCULATE ONLY (no save)
+  // -----------------------------------------
   async calculate(data: any) {
-    const tourPackage = await this.prisma.tourPackage.findUnique({
-      where: { id: data.tourPackageId },
-      include: {
-        locations: true,
-      },
-    });
+    const tourPackage =
+      await this.prisma.tourPackage.findUnique({
+        where: { id: data.tourPackageId },
+        include: { locations: true },
+      });
 
     if (!tourPackage)
       throw new NotFoundException('Tour package not found');
 
     let hotelTotal = 0;
-
-    console.log('Package Locations:', tourPackage.locations);
+    const hotelBreakdown: any[] = [];
 
     for (const selection of data.hotels) {
-      console.log("ss->", selection)
       const packageLocation =
         tourPackage.locations.find(
           (l) =>
@@ -60,10 +60,19 @@ export class QuotationsService {
       const perNight =
         Number(pricing.pricePerNight) + extra;
 
-      hotelTotal += perNight * nights * rooms;
+      const total =
+        perNight * nights * rooms;
+
+      hotelTotal += total;
+
+      hotelBreakdown.push({
+        ...selection,
+        nights,
+        pricePerNight: perNight,
+        total,
+      });
     }
 
-    // Hardcoded for now
     const vehicleCost = 10000;
     const activityCost = 5000;
 
@@ -75,35 +84,80 @@ export class QuotationsService {
       vehicleCost,
       activityCost,
       finalTotal,
+      hotels: hotelBreakdown,
     };
   }
 
-  async findOne(id: number) {
-    return this.prisma.quotation.findUnique({
-      where: { id },
-      include: {
-        hotels: true,
+  // -----------------------------------------
+  // GENERATE & SAVE
+  // -----------------------------------------
+  async generate(data: any, userId: number) {
+    const calculation =
+      await this.calculate(data);
+
+    const quotationNumber = `Q-${Date.now()}`;
+
+    return this.prisma.quotation.create({
+      data: {
+        quotationNumber,
+        tourPackageId: data.tourPackageId,
+        createdById: userId,
+        travelDate: new Date(data.travelDate),
+        hotelTotal: calculation.hotelTotal,
+        vehicleCost: calculation.vehicleCost,
+        activityCost: calculation.activityCost,
+        finalTotal: calculation.finalTotal,
+        baseTotal: calculation.finalTotal,
+        profitAmount: 0,
+        gstAmount: 0,
+        hotels: {
+          create: calculation.hotels.map((h) => ({
+            hotelId: h.hotelId,
+            tourPackageLocationId: h.tourPackageLocationId,
+            seasonId: h.seasonId,
+            mealPlanId: h.mealPlanId,
+            numberOfRooms: h.numberOfRooms,
+            customExtraPerRoom:
+              h.customExtraPerRoom || 0,
+            nights: h.nights,
+            pricePerNight: h.pricePerNight,
+            total: h.total,
+          })),
+        },
       },
+      include: { hotels: true },
     });
   }
 
-  async overrideTotal(
-    quotationId: number,
-    newTotal: number,
-  ) {
-    const quotation = await this.prisma.quotation.findUnique({
-      where: { id: quotationId },
+  // -----------------------------------------
+  // GET ALL
+  // -----------------------------------------
+  async findAll() {
+    return this.prisma.quotation.findMany({
+      orderBy: { createdAt: 'desc' },
     });
+  }
 
-    if (!quotation) {
-      throw new NotFoundException('Quotation not found');
-    }
+  // -----------------------------------------
+  // GET ONE
+  // -----------------------------------------
+  async findOne(id: number) {
+    return this.prisma.quotation.findUnique({
+      where: { id },
+      include: { hotels: true },
+    });
+  }
 
+  // -----------------------------------------
+  // OVERRIDE TOTAL
+  // -----------------------------------------
+  async overrideTotal(
+    id: number,
+    overrideTotal: number,
+  ) {
     return this.prisma.quotation.update({
-      where: { id: quotationId },
-      data: {
-        overrideTotal: newTotal,
-      },
+      where: { id },
+      data: { overrideTotal },
     });
   }
 }

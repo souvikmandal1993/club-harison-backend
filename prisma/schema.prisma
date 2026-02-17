@@ -76,6 +76,8 @@ model TourPackageLocation {
 
   tourPackage TourPackage @relation(fields: [tourPackageId], references: [id], onDelete: Cascade)
   location    Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  quotationHotels QuotationHotel[]
 }
 
 model HotelCategory {
@@ -89,7 +91,8 @@ model MealPlan {
   id   Int    @id @default(autoincrement())
   name String @unique
 
-  pricing HotelPricing[]
+  pricing         HotelPricing[]
+  quotationHotels QuotationHotel[]
 }
 
 model Hotel {
@@ -102,7 +105,8 @@ model Hotel {
   location Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
   category HotelCategory @relation(fields: [categoryId], references: [id])
 
-  pricing HotelPricing[]
+  pricing         HotelPricing[]
+  quotationHotels QuotationHotel[]
 }
 
 model Season {
@@ -111,7 +115,8 @@ model Season {
   startDate DateTime
   endDate   DateTime
 
-  pricing HotelPricing[]
+  pricing         HotelPricing[]
+  quotationHotels QuotationHotel[]
 }
 
 model HotelPricing {
@@ -138,9 +143,15 @@ model Quotation {
   hotelTotal   Decimal @db.Decimal(12, 2)
   vehicleCost  Decimal @db.Decimal(12, 2)
   activityCost Decimal @db.Decimal(12, 2)
-  finalTotal   Decimal @db.Decimal(12, 2)
 
+  baseTotal    Decimal @db.Decimal(12, 2)
+  profitAmount Decimal @db.Decimal(12, 2)
+  gstAmount    Decimal @db.Decimal(12, 2)
+
+  finalTotal    Decimal  @db.Decimal(12, 2)
   overrideTotal Decimal? @db.Decimal(12, 2)
+
+  status QuotationStatus @default(DRAFT)
 
   createdAt DateTime @default(now())
 
@@ -165,5 +176,9 @@ model QuotationHotel {
   customExtraPerRoom Decimal @db.Decimal(10, 2)
   total              Decimal @db.Decimal(12, 2)
 
-  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotation           Quotation           @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  tourPackageLocation TourPackageLocation @relation(fields: [tourPackageLocationId], references: [id])
+  hotel               Hotel               @relation(fields: [hotelId], references: [id])
+  season              Season              @relation(fields: [seasonId], references: [id])
+  mealPlan            MealPlan            @relation(fields: [mealPlanId], references: [id])
 }

@@ -101,4 +101,26 @@ export class TourPackagesService {
             where: { id },
         });
     }
+
+    async findOne(id: number) {
+        const tourPackage = await this.prisma.tourPackage.findUnique({
+            where: { id },
+            include: {
+                state: true,
+                locations: {
+                    include: {
+                        location: true,
+                    },
+                    orderBy: { sequenceOrder: 'asc' },
+                },
+            },
+        });
+
+        if (!tourPackage) {
+            throw new NotFoundException('Tour package not found');
+        }
+
+        return tourPackage;
+    }
+
 }

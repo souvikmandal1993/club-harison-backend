@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class HotelsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(locationId: number, categoryId: number, name: string) {
     const location = await this.prisma.location.findUnique({
@@ -30,12 +30,17 @@ export class HotelsService {
   async findAll() {
     return this.prisma.hotel.findMany({
       include: {
-        location: true,
+        location: {
+          include: {
+            state: true,   // 🔥 ADD THIS
+          },
+        },
         category: true,
       },
       orderBy: { name: 'asc' },
     });
   }
+
 
   async findByLocation(locationId: number) {
     return this.prisma.hotel.findMany({
